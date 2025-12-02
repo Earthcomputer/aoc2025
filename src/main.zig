@@ -1,4 +1,5 @@
 const day1 = @import("day1.zig");
+const day2 = @import("day2.zig");
 const std = @import("std");
 const Utils = @import("aoc2025").Utils;
 
@@ -35,6 +36,13 @@ pub fn main() !void {
                 try day1.part1(&utils);
             } else {
                 try day1.part2(&utils);
+            }
+        },
+        2 => {
+            if (part == 1) {
+                try day2.part1(&utils);
+            } else {
+                try day2.part2(&utils);
             }
         },
         else => {
