@@ -43,4 +43,8 @@ pub const Utils = struct {
     pub fn parseInt(comptime T: type, value: []const u8) !T {
         return std.fmt.parseInt(T, value, 10);
     }
+
+    pub fn cast(comptime T: type, v: anytype) T {
+        return @intCast(v);
+    }
 };
