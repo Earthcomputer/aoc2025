@@ -15,6 +15,7 @@ fn solve(utils: *Utils, limit: usize) !void {
 
     while (!utils.inputEnded) {
         const line = try utils.readInputLine();
+        defer utils.alloc.free(line);
         if (line.len < limit) {
             continue;
         }
