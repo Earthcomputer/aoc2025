@@ -60,8 +60,8 @@ pub fn part2(utils: *Utils) !void {
 }
 
 fn parseRanges(utils: *Utils) ![]Range {
-    var ranges = std.array_list.Managed(Range).init(utils.alloc);
-    defer ranges.deinit();
+    var ranges = std.ArrayList(Range).empty;
+    defer ranges.deinit(utils.alloc);
 
     while (!utils.inputEnded) {
         const line = try utils.readInputLine();
@@ -73,9 +73,9 @@ fn parseRanges(utils: *Utils) ![]Range {
         if (std.mem.indexOfScalar(u8, line, '-')) |dashIndex| {
             const min = try Utils.parseInt(u64, line[0..dashIndex]);
             const max = try Utils.parseInt(u64, line[dashIndex + 1 ..]);
-            try ranges.append(.{ .min = min, .max = max });
+            try ranges.append(utils.alloc, .{ .min = min, .max = max });
         }
     }
 
-    return try ranges.toOwnedSlice();
+    return try ranges.toOwnedSlice(utils.alloc);
 }

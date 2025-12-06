@@ -2,16 +2,16 @@ const Utils = @import("aoc2025").Utils;
 const std = @import("std");
 
 pub fn part1(utils: *Utils) !void {
-    var grid = std.array_list.Managed([]u8).init(utils.alloc);
+    var grid = std.ArrayList([]u8).empty;
     defer {
         for (grid.items) |item| {
             utils.alloc.free(item);
         }
-        grid.deinit();
+        grid.deinit(utils.alloc);
     }
 
     while (!utils.inputEnded) {
-        try grid.append(try utils.readInputLine());
+        try grid.append(utils.alloc, try utils.readInputLine());
     }
 
     const count = run_iter(grid.items, false);
@@ -19,16 +19,16 @@ pub fn part1(utils: *Utils) !void {
 }
 
 pub fn part2(utils: *Utils) !void {
-    var grid = std.array_list.Managed([]u8).init(utils.alloc);
+    var grid = std.ArrayList([]u8).empty;
     defer {
         for (grid.items) |item| {
             utils.alloc.free(item);
         }
-        grid.deinit();
+        grid.deinit(utils.alloc);
     }
 
     while (!utils.inputEnded) {
-        try grid.append(try utils.readInputLine());
+        try grid.append(utils.alloc, try utils.readInputLine());
     }
 
     var count: u64 = 0;
