@@ -6,9 +6,9 @@ const Point = struct {
     y: u64,
 
     fn areaTo(self: *const Point, other: Point) u64 {
-        const dx = Utils.cast(i64, self.x) - Utils.cast(i64, other.x) + 1;
-        const dy = Utils.cast(i64, self.y) - Utils.cast(i64, other.y) + 1;
-        return Utils.cast(u64, @abs(dx * dy));
+        const dx = Utils.cast(u64, @abs(Utils.cast(i64, self.x) - Utils.cast(i64, other.x))) + 1;
+        const dy = Utils.cast(u64, @abs(Utils.cast(i64, self.y) - Utils.cast(i64, other.y))) + 1;
+        return dx * dy;
     }
 
     fn dirTo(self: *const Point, other: Point) Direction {
@@ -46,23 +46,22 @@ const Direction = enum(u8) {
     }
 };
 
-fn lineInterceptsPolygon(a: Point, b: Point, polygon: []const Point, leftOnOutside: bool) bool {
-    _ = leftOnOutside;
+fn lineFullyInsidePolygon(a: Point, b: Point, polygon: []const Point) bool {
     if (a.x == b.x) {
         for (@min(a.y, b.y)..@max(a.y, b.y) + 1) |y| {
             if (!isInsidePolygon(.{ .x = a.x, .y = Utils.cast(u64, y) }, polygon)) {
-                return true;
+                return false;
             }
         }
     } else {
         for (@min(a.x, b.x)..@max(a.x, b.x) + 1) |x| {
             if (!isInsidePolygon(.{ .x = Utils.cast(u64, x), .y = a.y }, polygon)) {
-                return true;
+                return false;
             }
         }
     }
 
-    return false;
+    return true;
 }
 
 fn isInsidePolygon(p: Point, polygon: []const Point) bool {
@@ -70,6 +69,7 @@ fn isInsidePolygon(p: Point, polygon: []const Point) bool {
     for (0..polygon.len) |i| {
         const polygonA = polygon[i];
         const polygonB = polygon[(i + 1) % polygon.len];
+
         if (polygonA.y == polygonB.y) {
             // horizontal line
             if (polygonA.y == p.y) {
@@ -98,21 +98,21 @@ fn isInsidePolygon(p: Point, polygon: []const Point) bool {
     return leftCount % 2 == 1;
 }
 
-fn rectInterceptsPolygon(a: Point, b: Point, polygon: []const Point, leftOnOutside: bool) bool {
+fn rectFullyInsidePolygon(a: Point, b: Point, polygon: []const Point) bool {
     if (a.x == b.x or a.y == b.y) {
-        return false;
+        return lineFullyInsidePolygon(a, b, polygon);
     }
 
-    if (lineInterceptsPolygon(a, .{ .x = b.x, .y = a.y }, polygon, leftOnOutside)) {
-        return true;
+    if (!lineFullyInsidePolygon(a, .{ .x = b.x, .y = a.y }, polygon)) {
+        return false;
     }
-    if (lineInterceptsPolygon(.{ .x = b.x, .y = a.y }, b, polygon, leftOnOutside)) {
-        return true;
+    if (!lineFullyInsidePolygon(.{ .x = b.x, .y = a.y }, b, polygon)) {
+        return false;
     }
-    if (lineInterceptsPolygon(b, .{ .x = a.x, .y = b.y }, polygon, leftOnOutside)) {
-        return true;
+    if (!lineFullyInsidePolygon(b, .{ .x = a.x, .y = b.y }, polygon)) {
+        return false;
     }
-    return lineInterceptsPolygon(.{ .x = a.x, .y = b.y }, a, polygon, leftOnOutside);
+    return lineFullyInsidePolygon(.{ .x = a.x, .y = b.y }, a, polygon);
 }
 
 pub fn part1(utils: *Utils) !void {
@@ -157,20 +157,10 @@ pub fn part2(utils: *Utils) !void {
         }
     }
 
-    var angle: i64 = 0;
-    var prevDir = points.getLast().dirTo(points.items[0]);
-    for (1..points.items.len) |i| {
-        const dir = points.items[i - 1].dirTo(points.items[i]);
-        angle += prevDir.angleTo(dir);
-        prevDir = dir;
-    }
-
-    const leftOnOutside = angle > 0;
-
     var maxArea: u64 = 0;
     var finishedThreads: usize = 0;
     for (0..points.items.len - 1) |i| {
-        _ = try std.Thread.spawn(.{}, part2Iter, .{ i, points.items, leftOnOutside, &maxArea, &finishedThreads });
+        _ = try std.Thread.spawn(.{}, part2Iter, .{ i, points.items, &maxArea, &finishedThreads });
     }
 
     while (finishedThreads < points.items.len - 1) {
@@ -180,19 +170,18 @@ pub fn part2(utils: *Utils) !void {
     try utils.print("{d}", .{maxArea});
 }
 
-fn part2Iter(i: usize, points: []const Point, leftOnOutside: bool, maxArea: *u64, finishedThreads: *usize) !void {
+fn part2Iter(i: usize, points: []const Point, maxArea: *u64, finishedThreads: *usize) !void {
     for (i + 1..points.len) |j| {
-        std.debug.print("{d}, {d}\n", .{ i, j });
         const area = points[i].areaTo(points[j]);
-        if (area >= maxArea.*) {
+        if (area <= maxArea.*) {
             continue;
         }
-        if (rectInterceptsPolygon(points[i], points[j], points, leftOnOutside)) {
+        if (!rectFullyInsidePolygon(points[i], points[j], points)) {
             continue;
         }
         while (true) {
             const oldValue = maxArea.*;
-            if (area >= oldValue) {
+            if (area <= oldValue) {
                 break;
             }
             if (@cmpxchgWeak(u64, maxArea, oldValue, area, std.builtin.AtomicOrder.acquire, std.builtin.AtomicOrder.acquire) == null) {
